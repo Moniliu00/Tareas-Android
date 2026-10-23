@@ -34,6 +34,14 @@ class TaskDAO(val context: Context) {
         return Task(id, title, done)
     }
 
+    fun save(task: Task) {
+        if (task.id == -1) {
+            insert(task)
+        } else {
+            update(task)
+        }
+    }
+
     fun insert(task: Task) {
         // Gets the data repository in write mode
         open()

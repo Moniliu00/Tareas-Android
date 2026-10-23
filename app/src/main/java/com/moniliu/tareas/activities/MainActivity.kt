@@ -1,5 +1,6 @@
 package com.moniliu.tareas.activities
 
+import android.app.AlertDialog
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -7,10 +8,12 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.moniliu.tareas.R
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.moniliu.tareas.adapters.TaskAdapter
 import com.moniliu.tareas.data.Task
 import com.moniliu.tareas.data.TaskDAO
 import com.moniliu.tareas.databinding.ActivityMainBinding
+import com.moniliu.tareas.databinding.DialogTaskBinding
 
 
 class MainActivity : AppCompatActivity() {
@@ -44,9 +47,56 @@ class MainActivity : AppCompatActivity() {
 
         binding.recyclerView.adapter = adapter
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
+
+        binding.addTaskButton.setOnClickListener {
+            val task = Task(-1, "")
+            showTaskDialog(task)
+        }
+    }
+
+    fun reloadData() {
+        // TODO: Se puede optimizar
+        taskList = taskDAO.findAll()
+        adapter.updateData(taskList)
+    }
+
+    fun showTaskDialog(task: Task) {
+        val dialogBinding = DialogTaskBinding.inflate(layoutInflater)
+
+        dialogBinding.titleTextField.editText!!.setText(task.title)
+
+        val dialogTitle = if (task.id == -1) "Nueva tarea" else "Editar tarea"
+
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(dialogTitle)
+            .setView(dialogBinding.root)
+            .setPositiveButton("Guardar") { dialog, which ->
+                // Aqui no hacemos nada, lo dejamos para despues de mostrar el dialogo
+                // Es para evitar que se cierre automaticamente
+            }
+            .setNegativeButton("Cancelar") { dialog, which ->
+                // Do something else.
+            }
+
+        val dialog = builder.create()
+        dialog.show()
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val title = dialogBinding.titleTextField.editText!!.text.toString()
+            if (title.isEmpty()) {
+                dialogBinding.titleTextField.error = "No se pueden crear tareas vacias"
+            } else {
+                task.title = title
+                taskDAO.save(task)
+                reloadData()
+
+                dialog.dismiss()
+            }
+        }
     }
 
     fun onItemClick(position: Int) {
+        //Toast.makeText(this, taskList[position].title, Toast.LENGTH_SHORT).show()
         onItemCheck(position)
     }
 
@@ -55,17 +105,30 @@ class MainActivity : AppCompatActivity() {
         task.done = !task.done
         taskDAO.update(task)
 
-        // TODO: Se puede optimizar
-        taskList = taskDAO.findAll()
-        adapter.updateData(taskList)
+        reloadData()
     }
 
     fun onItemEdit(position: Int) {
-
+        val task = taskList[position]
+        showTaskDialog(task)
     }
 
     fun onItemDelete(position: Int) {
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle("Borrar tarea")
+            .setMessage("¿Estas seguro de querer borrar la tarea?")
+            .setPositiveButton("Borrar") { dialog, which ->
+                val task = taskList[position]
+                taskDAO.delete(task)
 
+                reloadData()
+            }
+            .setNegativeButton("Cancelar") { dialog, which ->
+                // Do something else.
+            }
+
+        val dialog = builder.create()
+        dialog.show()
     }
 }
 
